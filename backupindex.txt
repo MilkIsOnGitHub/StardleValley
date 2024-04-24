@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stardle Valley</title>
+    <style>
+        #image-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        #current-image {
+            max-width: 300px;
+            max-height: 300px;
+        }
+        #answer-input {
+            margin-top: 20px;
+            text-align: center;
+        }
+		@font-face {
+			font-family: 'Stardew Valley';
+			src: url('Stardew_Valley.ttf') format('truetype'); /* Changed file extension to .ttf */
+		}
+
+		body {
+			background-image: url('bg.jpg');
+			font-family: 'Stardew Valley', sans-serif; 
+			font-size: 30px;
+		}
+
+		button {
+			font-family: 'Stardew Valley', sans-serif;
+			font-size: 30px;
+			background-image: url('buttonasset.jpg');
+			width: 280px;
+			height: 50px;
+			border: none;
+			padding: 0;
+			background-size: 100% 100%;
+			margin: 0;
+			box-shadow: 2px 10px 10px rgba(96,47,29,0.8);
+		}
+		input[type="text"] {
+			font-family: 'Stardew Valley', sans-serif;
+			font-size: 30px;
+		}
+		#hints-shown {
+			margin: 0;
+			padding: 0;
+		}
+		#answer-input {
+			margin: 0;
+			padding: 0;
+		}
+		p {
+			text-align: center;
+		}
+		
+    </style>
+</head>
+<body>
+	<br />
+	<br />
+	<br />
+	<br />
+	<br />
+	<br />
+	<br />
+	<br />
+	<br />
+    <div id="image-container">
+        <!-- Current image will be loaded here -->
+        <img id="current-image" src="" style="display: block; margin: 0 auto; width: 48px;" />
+
+    </div>
+	<br />
+	<br />
+	<br />
+	<p id="result-message"></p>
+	<div id="hints-shown">
+    <div id="answer-input" style="text-align: center;">
+        <input type="text" id="user-answer" placeholder="Enter your answer">
+        <button onclick="checkAnswer()">Check Answer</button>
+        
+		
+		
+        <div id="source-hint-container">
+            <button onclick="showSourceHint()">Show Source Hint</button>
+            <button onclick="hideSourceHint()" style="display: none;">Hide Source Hint</button>
+            <p id="source-hint" style="display: none;"></p>
+        </div>
+		<br />
+		<div id="category-hint-container">
+            <button onclick="showCategoryHint()">Show Category Hint</button>
+            <button onclick="hideCategoryHint()" style="display: none;">Hide Category Hint</button>
+            <p id="category-hint" style="display: none;"></p>
+        </div>
+		<br />
+		<div id="season-hint-container">
+            <button onclick="showSeasonHint()">Show Season Hint</button>
+            <button onclick="hideSeasonHint()" style="display: none;">Hide Season Hint</button>
+            <p id="season-hint" style="display: none;"></p>
+        </div>
+		</div>
+    </div>
+    
+    <script>
+	
+	let hideInputsExecuted = false; // Change this variable to true or false
+	// before file, see file for headers as well as parse fx
+	const csvData = 
+		`1,Spice Berry,1,Foraging,Food,Summer
+		2,Star Fruit,2,Farm,Crop,Summer
+		3,Wool,3,Farm,Animal Goods,Any
+		4,Void Egg,4,Animal Goods,Any
+		5,Pale Ale,5,Farm,Artisan,Any`;
+
+	const lines = csvData.trim().split('\n');
+
+	// Parse each line
+	const results = lines.map(line => {
+		const columns = line.split(',');
+		return {
+			'ID number': columns[0],
+			'Name': columns[1],
+			'Image Filename': columns[2],
+			'Source Hint': columns[3],
+			'Category Hint': columns[4],
+			'Season Hint': columns[5],
+		};
+	});
+	
+	// auto submit when typing and hitting enter in text box
+        document.getElementById("user-answer").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault(); // Prevent default form submission behavior
+                checkAnswer(); // Call the checkAnswer function
+            }
+        });
+	
+	
+
+
+    let currentIndex = 1; // Start from index 1
+    let codeStartedDay = new Date('2024-04-25'); // Set the start date the next day (if you're starting on 4/23, use 4/24)
+    let currentDay = Math.floor((new Date() - codeStartedDay) / (1000 * 60 * 60 * 24)) + 1; // Calculate the current day
+    let currentDayEntry = currentDay % results.length || results.length; // Ensure currentDayEntry is within the range of results
+
+	// Convert currentIndex to a date string in the format "YYYY-MM-DD"
+	let currentIndexDate = new Date(codeStartedDay);
+	currentIndexDate.setDate(currentIndex);
+	let currentIndexDateString = currentIndexDate.toISOString().split('T')[0];
+
+	// Add currentIndexDate to codeStartedDay and format the result as "YYYY-MM-DD"
+	// Add currentIndex to codeStartedDay and format the result as "YYYY-MM-DD"
+	let calculatedDay = new Date(codeStartedDay.getTime() + (currentIndex - 1) * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+
+    const container = document.getElementById('image-container');
+    const currentImage = document.getElementById('current-image');
+    const answerInput = document.getElementById('user-answer');
+    const resultMessage = document.getElementById('result-message');
+	
+	function setCurrentIndex() {
+		let daysSinceStart = Math.floor((new Date() - codeStartedDay) / (1000 * 60 * 60 * 24)); // Calculate the number of days since start
+		currentIndex = (daysSinceStart % results.length) + 1; // Adjust index to start from 1
+		if (currentIndex === 0) {
+    currentIndex = results.length; // Wrap around if currentIndex becomes 0
+		}
+	}
+
+    function showImage(index) {
+		setCurrentIndex();
+        const item = results[index - 1]; // Adjusted index to start from 1
+        currentImage.src = `${item['ID number']}.png`; // Assuming images are named as ID.png
+        currentImage.alt = "A random image from Stardew Valley that the user needs to guess.";
+        answerInput.value = ''; // Clear the input field when changing images
+        resultMessage.textContent = ''; // Clear the result message
+    }
+	
+	// initial currentIndex fucking finally
+	setCurrentIndex();
+
+    function checkAnswer() {
+    const userAnswer = answerInput.value.trim();
+    const currentItem = results[currentIndex - 1]; // Adjusted index to start from 1
+    if (userAnswer.toLowerCase() === currentItem.Name.toLowerCase()) {
+        resultMessage.textContent = 'Correct! You\'ve solved the Stardle for ' + calculatedDay + '! Come back at midnight for tomorrow\'s Stardle!';
+        checkAnswerChangesLayout();
+        hideInputsExecuted = true; // Modify the variable
+    } else {
+        resultMessage.textContent = 'Wrong! Try again.';
+    }
+    return hideInputsExecuted; // Return the modified variable
+}
+
+// Call checkAnswer and update hideInputsExecuted
+hideInputsExecuted = checkAnswer(hideInputsExecuted);
+	
+	function showSourceHint() {
+		const sourceHintParagraph = document.getElementById('source-hint');
+		const showButton = document.querySelector('#source-hint-container button:nth-of-type(1)');
+		const hideButton = document.querySelector('#source-hint-container button:nth-of-type(2)');
+		const currentItem = results[currentIndex - 1]; // Adjusted index to start from 1
+		sourceHintParagraph.textContent = `Source Hint: ${currentItem['Source Hint']}`;
+		sourceHintParagraph.style.display = 'block';
+		showButton.style.display = 'none';
+		hideButton.style.display = 'inline-block';
+	}
+
+
+	function hideSourceHint() {
+		const sourceHintParagraph = document.getElementById('source-hint');
+		const showButton = document.querySelector('#source-hint-container button:nth-of-type(1)');
+		const hideButton = document.querySelector('#source-hint-container button:nth-of-type(2)');
+		sourceHintParagraph.style.display = 'none';
+		showButton.style.display = 'inline-block';
+		hideButton.style.display = 'none';
+	}
+
+
+	function showCategoryHint() {
+		const categoryHintParagraph = document.getElementById('category-hint');
+		const showButton = document.querySelector('#category-hint-container button:nth-of-type(1)');
+		const hideButton = document.querySelector('#category-hint-container button:nth-of-type(2)');
+		const currentItem = results[currentIndex - 1]; // Adjusted index to start from 1
+		categoryHintParagraph.textContent = `Category Hint: ${currentItem['Category Hint']}`;
+		categoryHintParagraph.style.display = 'block';
+		showButton.style.display = 'none';
+		hideButton.style.display = 'inline-block';
+	}
+
+	function hideCategoryHint() {
+		const categoryHintParagraph = document.getElementById('category-hint');
+		const showButton = document.querySelector('#category-hint-container button:nth-of-type(1)');
+		const hideButton = document.querySelector('#category-hint-container button:nth-of-type(2)');
+		categoryHintParagraph.style.display = 'none';
+		showButton.style.display = 'inline-block';
+		hideButton.style.display = 'none';
+	}
+
+    // Initially show the image for the current day entry
+    showImage(currentDayEntry);
+
+	function showSeasonHint() {
+        const seasonHintParagraph = document.getElementById('season-hint');
+        const showButton = document.querySelector('#season-hint-container button:nth-of-type(1)');
+        const hideButton = document.querySelector('#season-hint-container button:nth-of-type(2)');
+        const currentItem = results[currentIndex - 1]; // Adjusted index to start from 1
+        seasonHintParagraph.textContent = `Season Hint: ${currentItem['Season Hint']}`;
+        seasonHintParagraph.style.display = 'block';
+        showButton.style.display = 'none';
+        hideButton.style.display = 'inline-block';
+    }
+
+	function hideSeasonHint() {
+		const seasonHintParagraph = document.getElementById('season-hint');
+		const showButton = document.querySelector('#season-hint-container button:nth-of-type(1)');
+		const hideButton = document.querySelector('#season-hint-container button:nth-of-type(2)');
+		seasonHintParagraph.style.display = 'none';
+		showButton.style.display = 'inline-block';
+		hideButton.style.display = 'none';
+	}
+	
+	function checkAnswerChangesLayout () {
+		// Show hints if hideInputsExecuted is false, otherwise hide hints
+		if (hideInputsExecuted) {
+			hideHints(); // Call hideHints() function to hide the hints container
+		} else {
+			showHints();
+		}
+		
+	}
+	
+	function showHints() {
+            const hintsShown = document.getElementById('hints-shown');
+            hintsShown.style.display = 'none';
+        }
+
+        // Function to hide the hints
+        function hideHints() {
+            const hintsShown = document.getElementById('hints-shown');
+            hintsShown.style.display = 'block';
+        }
+	
+    </script>
+</body>
+</html>
