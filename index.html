@@ -56,11 +56,24 @@
 		}
 		p {
 			text-align: center;
+			margin-bottom: 0;
+			padding: 0;
+		}
+		div {
+			margin-bottom:0;
+			padding: 0;
+		}
+		#updateInfo {
+			font-size: 14px;
+			font-family: 'Arial', sans-serif;
 		}
 		
     </style>
 </head>
 <body>
+
+
+
 	<br />
 	<br />
 	<br />
@@ -70,6 +83,7 @@
 	<br />
 	<br />
 	<br />
+	<p>Day <span id="current-day-entry"></span>'s Puzzle</p>
     <div id="image-container">
         <!-- Current image will be loaded here -->
         <img id="current-image" src="" style="display: block; margin: 0 auto; width: 48px;" />
@@ -108,31 +122,50 @@
 		</div>
     </div>
     
-    <script>
+	<!-- FORM FEEDBACK -->
+	<p>Have any ideas to share? Suggestions? Bug reports, maybe? 
+	<br />
+	<a href="https://forms.gle/SLbf2r5r3rayrqpN6" target="_blank">Click here</a> to fill out a Google form to let me know!</p>
+
+	
+	<!-- END FEEDBACK -->
+	<p id="updateInfo"> web design by milk. learning how to code with the help of chat gpt. <br />last updated 4/27/24. </p>
+	
+	
+	
+	
+	
+	
+	
+	
+	
+<script>
 	
 	let hideInputsExecuted = false; // Change this variable to true or false
+	let codeStartedDay = new Date('2024-04-26'); // Set the start date
+	
+	
 	// before file, see file for headers as well as parse fx
+	
+	
+	// improved csv parsing
 	const csvData = 
-		`1,Spice Berry,1,Foraging,Food,Summer
-		2,Star Fruit,2,Farm,Crop,Summer
-		3,Wool,3,Farm,Animal Goods,Any
-		4,Void Egg,4,Animal Goods,Any
-		5,Pale Ale,5,Farm,Artisan,Any`;
-
-	const lines = csvData.trim().split('\n');
-
-	// Parse each line
-	const results = lines.map(line => {
-		const columns = line.split(',');
-		return {
-			'ID number': columns[0],
-			'Name': columns[1],
-			'Image Filename': columns[2],
-			'Source Hint': columns[3],
-			'Category Hint': columns[4],
-			'Season Hint': columns[5],
-		};
-	});
+        `1,Spice Berry,1,Foraging,Food,Summer
+        2,Star Fruit,2,Farm,Crop,Summer
+        3,Wool,3,Farm,Animal Goods,Any
+        4,Void Egg,4,Animal Goods,Any
+        5,Pale Ale,5,Farm,Artisan,Any`;
+    const results = csvData.trim().split('\n').map(line => {
+        const columns = line.split(',');
+        return {
+            'ID number': columns[0],
+            'Name': columns[1],
+            'Image Filename': columns[2],
+            'Source Hint': columns[3],
+            'Category Hint': columns[4],
+            'Season Hint': columns[5],
+        };
+    });
 	
 	// auto submit when typing and hitting enter in text box
         document.getElementById("user-answer").addEventListener("keypress", function(event) {
@@ -143,10 +176,10 @@
         });
 	
 	
+	
 
 
     let currentIndex = 1; // Start from index 1
-    let codeStartedDay = new Date('2024-04-25'); // Set the start date the next day (if you're starting on 4/23, use 4/24)
     let currentDay = Math.floor((new Date() - codeStartedDay) / (1000 * 60 * 60 * 24)) + 1; // Calculate the current day
     let currentDayEntry = currentDay % results.length || results.length; // Ensure currentDayEntry is within the range of results
 
@@ -164,39 +197,95 @@
     const currentImage = document.getElementById('current-image');
     const answerInput = document.getElementById('user-answer');
     const resultMessage = document.getElementById('result-message');
-	
-	function setCurrentIndex() {
-		let daysSinceStart = Math.floor((new Date() - codeStartedDay) / (1000 * 60 * 60 * 24)); // Calculate the number of days since start
-		currentIndex = (daysSinceStart % results.length) + 1; // Adjust index to start from 1
-		if (currentIndex === 0) {
-    currentIndex = results.length; // Wrap around if currentIndex becomes 0
-		}
-	}
 
-    function showImage(index) {
-		setCurrentIndex();
-        const item = results[index - 1]; // Adjusted index to start from 1
-        currentImage.src = `${item['ID number']}.png`; // Assuming images are named as ID.png
-        currentImage.alt = "A random image from Stardew Valley that the user needs to guess.";
-        answerInput.value = ''; // Clear the input field when changing images
-        resultMessage.textContent = ''; // Clear the result message
-    }
+	// universal date check - UNCOMMENT THIS WHEN YOU WANT TO USE UNIVERSAL EDT TIME
+	 function getCurrentRealDate() {
+		const options = {
+			timeZone: 'America/New_York',
+			month: 'long',
+			day: 'numeric'
+		};
+		
+		const currentRealDate = new Date().toLocaleString('en-US', options);
+		return currentRealDate;
+	 }
 	
-	// initial currentIndex fucking finally
-	setCurrentIndex();
+	 const currentRealDate = getCurrentRealDate();
+	console.log(currentRealDate);
+	
+	let lastCheckedDay = new Date().getDate(); // Initialize lastCheckedDay when the script loads
+	
+function checkDayChange() {
+		let currentDay = new Date().getDate(); // Get the current day
+		if (currentDay > lastCheckedDay) {
+			console.log("currentDay", currentDay);
+			console.log("checkDayChange has ran");
+			console.log("Day has changed normally!");  // Log or handle the normal day change
+			lastCheckedDay = currentDay;  // Update the stored last checked day
+			updateUI();  // Function to update your UI or handle other tasks for a new day
+    } else if (currentDay < lastCheckedDay) {
+			console.log("System time has been set backwards!");  // Log or handle the backward date change
+			lastCheckedDay = currentDay;  // Reset lastCheckedDay to reflect the actual current day
+			updateUI();  // Optionally, update your UI or perform other tasks as needed
+    }
+}
+
+	setInterval(checkDayChange, 5000); // Check every minute
+
+
+
+	
+	// attempt at improving redundnancy did I break everything oh god fuck
+	
+	
+
+    function calculateDayEntry() {
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const timeDiff = new Date() - codeStartedDay;
+        currentDayEntry = Math.floor(timeDiff / msPerDay) + 1; // Calculate the entry index based on the start date
+    }
+
+    function updateUI() {
+        calculateDayEntry();
+        showImage(currentDayEntry % results.length || results.length);
+		checkDayChange();
+    }
+
+    function showImage(entryIndex) {
+        const index = (entryIndex - 1) % results.length;
+        const item = results[index];
+        const currentImage = document.getElementById('current-image');
+        currentImage.src = `${item['ID number']}.png`;
+        currentImage.alt = "A random image from Stardew Valley that the user needs to guess.";
+        document.getElementById('user-answer').value = '';
+        document.getElementById('result-message').textContent = '';
+    }
+
+    document.getElementById("user-answer").addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            checkAnswer();
+        }
+    });
+
+    window.onload = function () {
+        updateUI();
+		getCurrentRealDate();
+        setInterval(updateUI, 60000); // Check and update every minute if necessary
+    }
 
     function checkAnswer() {
-    const userAnswer = answerInput.value.trim();
-    const currentItem = results[currentIndex - 1]; // Adjusted index to start from 1
-    if (userAnswer.toLowerCase() === currentItem.Name.toLowerCase()) {
-        resultMessage.textContent = 'Correct! You\'ve solved the Stardle for ' + calculatedDay + '! Come back at midnight for tomorrow\'s Stardle!';
-        checkAnswerChangesLayout();
-        hideInputsExecuted = true; // Modify the variable
-    } else {
-        resultMessage.textContent = 'Wrong! Try again.';
+        const userAnswer = document.getElementById('user-answer').value.trim();
+        const index = (currentDayEntry - 1) % results.length;
+        const currentItem = results[index];
+        if (userAnswer.toLowerCase() === currentItem.Name.toLowerCase()) {
+            document.getElementById('result-message').textContent = 'Correct! Well done!';
+        } else {
+            document.getElementById('result-message').textContent = 'Wrong! Try again.';
+        }
     }
-    return hideInputsExecuted; // Return the modified variable
-}
+
+   
 
 // Call checkAnswer and update hideInputsExecuted
 hideInputsExecuted = checkAnswer(hideInputsExecuted);
@@ -286,7 +375,21 @@ hideInputsExecuted = checkAnswer(hideInputsExecuted);
             const hintsShown = document.getElementById('hints-shown');
             hintsShown.style.display = 'block';
         }
-	
+		
+		// show the current database index
+	document.getElementById("current-day-entry").innerText = currentDayEntry;
+		
+		
+
     </script>
+	
+<!-- v1.1 
+
+added:
+- form feedback
+- attempted automation at midnight (may or may not be working, need to test at actual midnight time EDT but can only do so once every 24 hours because my test sims keep failing)
+- god help me why is this so hard
+
+-->
 </body>
 </html>
