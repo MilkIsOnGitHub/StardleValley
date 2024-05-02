@@ -69,9 +69,54 @@
 		}
 		
     </style>
+	
+	
 </head>
 <body>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js">
+		//jquery bs
+	</script>
+	<script>
+		loadData(3,20);
 
+
+		function loadData(retries, delay) {
+    $.ajax({
+        url: 'https://milkisongithub.github.io/StardleValley/database.csv', 
+        dataType: 'text',
+        success: function(data) {
+            results = data.trim().split('\n').map(line => {
+                const columns = line.split(',');
+                return {
+                    'ID number': columns[0].trim(),
+                    'Name': columns[1].trim(),
+                    'Image Filename': columns[2].trim(),
+                    'Source Hint': columns[3].trim(),
+                    'Category Hint': columns[4].trim(),
+                    'Season Hint': columns[5].trim()
+                };
+            });
+			if (results && results.length > 0) {
+				initializeUI();
+				// document.getElementById("check-answer-button").disabled = false;
+				console.log("Data loaded successfully.");
+			}
+
+        },
+		error: function(jqXHR, textStatus, errorThrown) {
+			console.error('Error loading data: ', textStatus, errorThrown);
+			if (retries > 0) {
+				setTimeout(() => {
+					console.log('Retrying... (${maxRetries - retries + 1} of ${maxRetries})');
+				}, delay);
+			} else {
+				console.error('Failed to load after 3 attempts');
+				alert('Critical failure to load results after 3 attempts, you fucked up again.');
+			}
+		}
+    });
+}
+	</script>
 
 
 	<br />
@@ -134,6 +179,7 @@
 	
 	
 	
+
 	
 	
 	
@@ -142,30 +188,17 @@
 <script>
 	
 	let hideInputsExecuted = false; // Change this variable to true or false
-	let codeStartedDay = new Date('2024-04-26'); // Set the start date
-	
+	let codeStartedDay = new Date('2024-04-24'); // Set the start date
+	let results;
+	let currentDay;
+	let currentDayEntry;
+	const maxRetries = 3;
+	let retryCount = 0;
 	
 	// before file, see file for headers as well as parse fx
 	
 	
-	// improved csv parsing
-	const csvData = 
-        `1,Spice Berry,1,Foraging,Food,Summer
-        2,Star Fruit,2,Farm,Crop,Summer
-        3,Wool,3,Farm,Animal Goods,Any
-        4,Void Egg,4,Animal Goods,Any
-        5,Pale Ale,5,Farm,Artisan,Any`;
-    const results = csvData.trim().split('\n').map(line => {
-        const columns = line.split(',');
-        return {
-            'ID number': columns[0],
-            'Name': columns[1],
-            'Image Filename': columns[2],
-            'Source Hint': columns[3],
-            'Category Hint': columns[4],
-            'Season Hint': columns[5],
-        };
-    });
+	
 	
 	// auto submit when typing and hitting enter in text box
         document.getElementById("user-answer").addEventListener("keypress", function(event) {
@@ -174,14 +207,34 @@
                 checkAnswer(); // Call the checkAnswer function
             }
         });
+		
+		
+		
+	// this part makes me understand why deadpool hated ajax so damn much
+	
+	// turning off on page load because it's being move above
+	// $(document).ready(function() {
+	// 	loadData(3, 2000);
+	// });
 	
 	
 	
+
+
+	function initializeUI() {
+		/* if (results && results.length > 0) {
+		 	updateUI();
+		} else {
+			console.error('No data available');
+		}
+		*/
+		// now that it's fixed we can try again??
+		updateUI();
+	}
 
 
     let currentIndex = 1; // Start from index 1
-    let currentDay = Math.floor((new Date() - codeStartedDay) / (1000 * 60 * 60 * 24)) + 1; // Calculate the current day
-    let currentDayEntry = currentDay % results.length || results.length; // Ensure currentDayEntry is within the range of results
+    
 
 	// Convert currentIndex to a date string in the format "YYYY-MM-DD"
 	let currentIndexDate = new Date(codeStartedDay);
@@ -246,9 +299,13 @@ function checkDayChange() {
     }
 
     function updateUI() {
+		console.log('Updating UI with data:', results);
         calculateDayEntry();
-        showImage(currentDayEntry % results.length || results.length);
+        showImage(currentDayEntry);
 		checkDayChange();
+		currentDay = Math.floor((new Date() - codeStartedDay) / (1000 * 60 * 60 * 24)) + 1;
+		currentDayEntry = currentDay % results.length || results.length; 
+		document.getElementById("current-day-entry").innerText = currentDayEntry;
     }
 
     function showImage(entryIndex) {
@@ -259,6 +316,8 @@ function checkDayChange() {
         currentImage.alt = "A random image from Stardew Valley that the user needs to guess.";
         document.getElementById('user-answer').value = '';
         document.getElementById('result-message').textContent = '';
+		console.log("showImage currentIndex", currentIndex);
+		console.log("currentDayENtry within show hint", currentDayEntry);
     }
 
     document.getElementById("user-answer").addEventListener("keypress", function(event) {
@@ -275,9 +334,17 @@ function checkDayChange() {
     }
 
     function checkAnswer() {
+		if(!results || results.length === 0) {
+			console.error('Data not loaded yet');
+			return;
+		}
+	
         const userAnswer = document.getElementById('user-answer').value.trim();
         const index = (currentDayEntry - 1) % results.length;
         const currentItem = results[index];
+		currentDay = Math.floor((new Date() - codeStartedDay) / (1000 * 60 * 60 * 24)) + 1;
+		currentDayEntry = currentDay % results.length || results.length;
+		
         if (userAnswer.toLowerCase() === currentItem.Name.toLowerCase()) {
             document.getElementById('result-message').textContent = 'Correct! Well done!';
         } else {
@@ -294,11 +361,13 @@ hideInputsExecuted = checkAnswer(hideInputsExecuted);
 		const sourceHintParagraph = document.getElementById('source-hint');
 		const showButton = document.querySelector('#source-hint-container button:nth-of-type(1)');
 		const hideButton = document.querySelector('#source-hint-container button:nth-of-type(2)');
-		const currentItem = results[currentIndex - 1]; // Adjusted index to start from 1
+		const currentItem = results[currentDayEntry - 1]; // Adjusted index to start from 1
 		sourceHintParagraph.textContent = `Source Hint: ${currentItem['Source Hint']}`;
 		sourceHintParagraph.style.display = 'block';
 		showButton.style.display = 'none';
 		hideButton.style.display = 'inline-block';
+		console.log("showSourceHint button clicked");
+		console.log("currentIndex within showSourceHint", currentIndex);
 	}
 
 
@@ -316,7 +385,7 @@ hideInputsExecuted = checkAnswer(hideInputsExecuted);
 		const categoryHintParagraph = document.getElementById('category-hint');
 		const showButton = document.querySelector('#category-hint-container button:nth-of-type(1)');
 		const hideButton = document.querySelector('#category-hint-container button:nth-of-type(2)');
-		const currentItem = results[currentIndex - 1]; // Adjusted index to start from 1
+		const currentItem = results[currentDayEntry - 1]; // Adjusted index to start from 1
 		categoryHintParagraph.textContent = `Category Hint: ${currentItem['Category Hint']}`;
 		categoryHintParagraph.style.display = 'block';
 		showButton.style.display = 'none';
@@ -333,13 +402,13 @@ hideInputsExecuted = checkAnswer(hideInputsExecuted);
 	}
 
     // Initially show the image for the current day entry
-    showImage(currentDayEntry);
+    // showImage(currentDayEntry);
 
 	function showSeasonHint() {
         const seasonHintParagraph = document.getElementById('season-hint');
         const showButton = document.querySelector('#season-hint-container button:nth-of-type(1)');
         const hideButton = document.querySelector('#season-hint-container button:nth-of-type(2)');
-        const currentItem = results[currentIndex - 1]; // Adjusted index to start from 1
+        const currentItem = results[currentDayEntry - 1]; // Adjusted index to start from 1
         seasonHintParagraph.textContent = `Season Hint: ${currentItem['Season Hint']}`;
         seasonHintParagraph.style.display = 'block';
         showButton.style.display = 'none';
@@ -365,31 +434,34 @@ hideInputsExecuted = checkAnswer(hideInputsExecuted);
 		
 	}
 	
-	function showHints() {
+		function showHints() {
             const hintsShown = document.getElementById('hints-shown');
             hintsShown.style.display = 'none';
         }
 
-        // Function to hide the hints
+    	// Function to hide the hints
         function hideHints() {
             const hintsShown = document.getElementById('hints-shown');
             hintsShown.style.display = 'block';
         }
 		
 		// show the current database index
-	document.getElementById("current-day-entry").innerText = currentDayEntry;
+	 document.getElementById("current-day-entry").innerText = currentDayEntry;
 		
 		
 
     </script>
 	
-<!-- v1.1 
+<!-- UPDATES
 
-added:
-- form feedback
+v1.1  | changes:
+- added form feedback
 - attempted automation at midnight (may or may not be working, need to test at actual midnight time EDT but can only do so once every 24 hours because my test sims keep failing)
-- god help me why is this so hard
+- some UI changes
 
+V2.2 | changes:
+- continuing to monitor automation at midnight
+- fixed correct hints showing
 -->
 </body>
 </html>
